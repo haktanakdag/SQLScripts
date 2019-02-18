@@ -151,39 +151,7 @@ Public Class voilib
         kelimecik = kelimecik.Replace("'", " ")
         Return kelimecik
     End Function
-    Public Function CpuId() As String
-        Dim computer As String = "."
-        Dim wmi As Object = GetObject("winmgmts:" &
-        "{impersonationLevel=impersonate}!\\" &
-        computer & "\root\cimv2")
-        Dim processors As Object = wmi.ExecQuery("Select * from " &
-        "Win32_Processor")
-
-        Dim cpu_ids As String = ""
-        For Each cpu As Object In processors
-            cpu_ids = cpu_ids & ", " & cpu.ProcessorId
-        Next cpu
-        If cpu_ids.Length > 0 Then cpu_ids =
-        cpu_ids.Substring(2)
-
-        Return cpu_ids
-    End Function
-    Public Function SystemSerialNumber() As String
-        ' Get the Windows Management Instrumentation object.
-        Dim wmi As Object = GetObject("WinMgmts:")
-
-        ' Get the "base boards" (mother boards).
-        Dim serial_numbers As String = ""
-        Dim mother_boards As Object =
-        wmi.InstancesOf("Win32_BaseBoard")
-        For Each board As Object In mother_boards
-            serial_numbers &= ", " & board.SerialNumber
-        Next board
-        If serial_numbers.Length > 0 Then serial_numbers =
-        serial_numbers.Substring(2)
-
-        Return serial_numbers
-    End Function
+    
     Public Shared Function GetDateTime() As DateTime
         Dim dateTime As DateTime = DateTime.MinValue
         Dim request As System.Net.HttpWebRequest = DirectCast(System.Net.WebRequest.Create("http://www.microsoft.com"), System.Net.HttpWebRequest)
@@ -218,112 +186,7 @@ Public Class voilib
         tarihsaatstr = tarihsaatstr.Replace(" ", "")
         Return tarihsaatstr
     End Function
-
-    Public Function GetHash(keystring As String) As String
-
-        Using hasher As MD5 = MD5.Create()    ' create hash object
-
-            ' Convert to byte array and get hash
-            Dim dbytes As Byte() = hasher.ComputeHash(Encoding.UTF8.GetBytes(keystring))
-
-            ' sb to create string from bytes
-            Dim sBuilder As New StringBuilder()
-
-            ' convert byte data to hex string
-            For n As Integer = 0 To dbytes.Length - 1
-                sBuilder.Append(dbytes(n).ToString("X2"))
-            Next n
-
-            Return sBuilder.ToString()
-        End Using
-
-    End Function
-
-
-    Public Function Encrypt(text As String, password As String) As String
-        Dim AES As New System.Security.Cryptography.RijndaelManaged
-        Dim Hash_AES As New System.Security.Cryptography.MD5CryptoServiceProvider
-        Dim encrypted As String = ""
-        Dim hash(31) As Byte
-        Dim temp As Byte() = Hash_AES.ComputeHash(System.Text.ASCIIEncoding.ASCII.GetBytes(password))
-        Array.Copy(temp, 0, hash, 0, 16)
-        Array.Copy(temp, 0, hash, 15, 16)
-        AES.Key = hash
-        AES.Mode = Security.Cryptography.CipherMode.ECB
-        Dim DESEncrypter As System.Security.Cryptography.ICryptoTransform = AES.CreateEncryptor
-        Dim Buffer As Byte() = System.Text.ASCIIEncoding.ASCII.GetBytes(text)
-        encrypted = Convert.ToBase64String(DESEncrypter.TransformFinalBlock(Buffer, 0, Buffer.Length))
-        Return encrypted
-    End Function
-    Public Function Decrypt(text As String, password As String) As String
-        Dim lisansvar As Boolean = False
-        Dim AES As New System.Security.Cryptography.RijndaelManaged
-        Dim Hash_AES As New System.Security.Cryptography.MD5CryptoServiceProvider
-        Dim decrypted As String = ""
-        Dim hash(31) As Byte
-        Try
-            Dim temp As Byte() = Hash_AES.ComputeHash(System.Text.ASCIIEncoding.ASCII.GetBytes(password))
-            Array.Copy(temp, 0, hash, 0, 16)
-            Array.Copy(temp, 0, hash, 15, 16)
-            AES.Key = hash
-            AES.Mode = Security.Cryptography.CipherMode.ECB
-            Dim DESDecrypter As System.Security.Cryptography.ICryptoTransform = AES.CreateDecryptor
-            Dim Buffer As Byte() = Convert.FromBase64String(text)
-
-            decrypted = System.Text.ASCIIEncoding.ASCII.GetString(DESDecrypter.TransformFinalBlock(Buffer, 0, Buffer.Length))
-            lisansvar = True
-        Catch ex As Exception
-            lisansvar = False
-        End Try
-        If lisansvar = False Then
-            decrypted = "lisansyok"
-        End If
-        Return decrypted
-    End Function
-
-    Public Function PHP(ByVal url As String, ByVal method As String, ByVal data As String)
-        Try
-            Dim request As System.Net.WebRequest = System.Net.WebRequest.Create(url)
-            request.Method = method
-            Dim postData = data
-            Dim byteArray As Byte() = Encoding.UTF8.GetBytes(postData)
-            request.ContentType = "application/x-www-form-urlencoded"
-            request.ContentLength = byteArray.Length
-            Dim dataStream As Stream = request.GetRequestStream()
-            dataStream.Write(byteArray, 0, byteArray.Length)
-            dataStream.Close()
-            Dim response As WebResponse = request.GetResponse()
-            dataStream = response.GetResponseStream()
-            Dim reader As New StreamReader(dataStream)
-            Dim responseFromServer As String = reader.ReadToEnd()
-            reader.Close()
-            dataStream.Close()
-            response.Close()
-            Return (responseFromServer)
-        Catch ex As Exception
-            Dim error1 As String = ErrorToString()
-            If error1 = "Invalid URI: The format of the URI could not be determined." Then
-                MsgBox("ERROR! Must have HTTP:// before the URL.")
-            Else
-                MsgBox(error1)
-            End If
-            Return ("ERROR")
-        End Try
-    End Function
-    Public Function LisansKontrol() As Boolean
-
-        Dim islemciid As String = CpuId().ToString
-        Dim sistemid As String = SystemSerialNumber().ToString
-        Dim tarih As DateTime = GetDateTime()
-        Dim htmlcode As String = PHP("http://voidev.com/lisans/lisanskontrol.php", "POST", "uygulama=VOIDRPT&bilgisayar=" & islemciid & sistemid & "&tarih=" & tarih.Year.ToString & "-" & tarih.Month().ToString() & "-" & tarih.Day().ToString())
-
-        If htmlcode.IndexOf("lisansvar") > 0 Then
-            Return True
-        Else
-            Return False
-        End If
-    End Function
-
+    
     Public Shared Function QueryDondur(ByVal q As String) As List(Of DataRow)
         Dim Dbl As New DBLib
         Dim Connection As New SqlConnection(Dbl.gGetConnectionStringEntegrator())
@@ -368,6 +231,7 @@ Public Class voilib
         Connection.Close()
         Return dr
     End Function
+
     Public Shared Function QueryDondurMikroAyar(ByVal q As String) As List(Of DataRow)
         Dim Dbl As New DBLib
         Dim Connection As New SqlConnection(Dbl.gGetConnectionStringMikroAyar())
